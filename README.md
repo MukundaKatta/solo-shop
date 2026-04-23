@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# solo.shop
 
-## Getting Started
+Start selling with a single photo. A minimal nas.com-style creator commerce platform.
 
-First, run the development server:
+- Creator storefronts at `/s/<handle>`
+- Product pages with Stripe Checkout
+- Magic-link auth (no passwords)
+
+## Stack
+
+- Next.js 16 (App Router, Turbopack)
+- Supabase (auth + Postgres + RLS)
+- Stripe Checkout
+- Tailwind CSS
+- Deployed to Vercel
+
+## Setup
+
+### 1. Install deps
+
+```bash
+npm install
+```
+
+### 2. Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) → create a new project.
+2. Once it's ready, open the **SQL Editor** and paste the contents of
+   [`supabase/schema.sql`](./supabase/schema.sql). Run it.
+3. In **Settings → API**, copy these values into `.env.local`:
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+4. In **Authentication → URL Configuration**, add your site URL
+   (e.g. `http://localhost:3300`) to the redirect allowlist.
+
+### 3. Create a Stripe account
+
+1. Go to [stripe.com](https://stripe.com) → grab your test keys.
+2. Copy the secret key into `.env.local` as `STRIPE_SECRET_KEY`.
+3. For local webhook testing:
+   ```bash
+   stripe listen --forward-to localhost:3300/api/stripe/webhook
+   ```
+   Copy the `whsec_...` it prints into `.env.local` as `STRIPE_WEBHOOK_SECRET`.
+
+### 4. Create `.env.local`
+
+```bash
+cp .env.example .env.local
+# fill in the values above
+```
+
+### 5. Run it
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3300](http://localhost:3300).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path                 | What it is                              |
+| -------------------- | --------------------------------------- |
+| `/`                  | Landing page                            |
+| `/login`             | Magic-link sign in                      |
+| `/dashboard`         | Edit your store + add products          |
+| `/s/<handle>`        | Public storefront                       |
+| `/s/<handle>/<id>`   | Public product page with Stripe checkout |
+| `/api/checkout`      | Creates a Stripe Checkout session       |
+| `/api/stripe/webhook`| Marks orders paid on `checkout.session.completed` |
 
-## Learn More
+## Deploy to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Push this repo to GitHub.
+2. Import it on [vercel.com](https://vercel.com/new).
+3. Paste the same env vars from `.env.local` into **Project Settings → Environment Variables**.
+4. After deploy, configure the Stripe webhook:
+   - Stripe Dashboard → Developers → Webhooks → Add endpoint
+   - URL: `https://<your-vercel-domain>/api/stripe/webhook`
+   - Events: `checkout.session.completed`, `checkout.session.expired`
+   - Copy the signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`, redeploy.
+5. In Supabase **Authentication → URL Configuration**, add your Vercel domain to the redirect allowlist.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## What's not built yet
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Image uploads (products use image URLs)
+- Stripe Connect (all payments land in the platform account — not per-seller payouts)
+- Community / messaging
+- Ads / analytics
